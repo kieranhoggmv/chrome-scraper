@@ -1,4 +1,4 @@
 beautifulsoup4
 selenium
 chromedriver_py
-dotenv
+python-dotenv
