@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chrome-scraper"
+version = "0.1"
+dependencies = [
+  "selenium",
+  "beautifulsoup"
+]
+requires-python = ">=3.8"
+authors = [
+  {name = "Kieran Hogg", email = "kieran.hogg@gmail.com"},
+]
+description = "A thin wrapper around selenium for scraping web pages"
+readme = "README.md"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python"
+]
