@@ -22,7 +22,7 @@ class NotConfiguredException(Exception):
 LOCAL_USER = os.getenv("LOCAL_USER")
 if not LOCAL_USER:
     raise NotConfiguredException("LOCAL_USER needs to defined in .env")
-CHROME_PROFILE = os.getenv("CHROME_PROFILE")
+CHROME_PROFILE = os.getenv("CHROME_PROFILE", default=None)
 PROFILE_PATH = os.getenv(
     "PROFILE_PATH",
     default=rf"C:\Users\{LOCAL_USER}\AppData\Local\Google\Chrome\User Data",
