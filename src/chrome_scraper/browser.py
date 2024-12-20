@@ -14,7 +14,14 @@ from chromedriver_py import binary_path
 
 load_dotenv()
 
+
+class NotConfiguredException(Exception):
+    pass
+
+
 LOCAL_USER = os.getenv("LOCAL_USER")
+if not LOCAL_USER:
+    raise NotConfiguredException("LOCAL_USER needs to defined in .env")
 CHROME_PROFILE = os.getenv("CHROME_PROFILE")
 PROFILE_PATH = os.getenv(
     "PROFILE_PATH",
