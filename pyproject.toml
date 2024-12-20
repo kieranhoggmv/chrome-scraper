@@ -10,7 +10,8 @@ name = "chrome-scraper"
 version = "0.1"
 dependencies = [
   "selenium",
-  "beautifulsoup4"
+  "beautifulsoup4",
+  "dotenv",
 ]
 requires-python = ">=3.8"
 authors = [
