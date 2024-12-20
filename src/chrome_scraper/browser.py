@@ -19,21 +19,22 @@ class NotConfiguredException(Exception):
     pass
 
 
-LOCAL_USER = os.getenv("LOCAL_USER")
-if not LOCAL_USER:
-    raise NotConfiguredException("LOCAL_USER needs to defined in .env")
-CHROME_PROFILE = os.getenv("CHROME_PROFILE", default=None)
-PROFILE_PATH = os.getenv(
-    "PROFILE_PATH",
-    default=rf"C:\Users\{LOCAL_USER}\AppData\Local\Google\Chrome\User Data",
-)
-
-
 class _Browser:
     BY = By
 
     def __init__(self, kill_windows=True):
-        os.system("taskkill /f /im chrome.exe")
+        LOCAL_USER = os.getenv("LOCAL_USER")
+        if not LOCAL_USER:
+            raise NotConfiguredException("LOCAL_USER needs to defined in .env")
+        CHROME_PROFILE = os.getenv("CHROME_PROFILE", default=None)
+        PROFILE_PATH = os.getenv(
+            "PROFILE_PATH",
+            default=rf"C:\Users\{LOCAL_USER}\AppData\Local\Google\Chrome\User Data",
+        )
+
+        if kill_windows:
+            input("Press any key to close Chrome and continue...")
+            os.system("taskkill /f /im chrome.exe")
         options = webdriver.ChromeOptions()
         if CHROME_PROFILE is None:
             profiles = glob.glob(os.path.join(PROFILE_PATH, "Profile*"))
