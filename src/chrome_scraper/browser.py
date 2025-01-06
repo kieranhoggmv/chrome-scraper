@@ -80,10 +80,13 @@ class _Browser:
 
 
 class Browser:
-    def __init__(self):
+
+    def __init__(self, kill_windows=True, skip_confirmation=False):
         self.browser = None
+        self.kill_windows = kill_windows
+        self.skip_confirmation = skip_confirmation
 
     def get_browser(self):
         if not self.browser:
-            self.browser = _Browser()
+            self.browser = _Browser(self.kill_windows, self.skip_confirmation)
         return self.browser
