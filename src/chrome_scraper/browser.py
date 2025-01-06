@@ -22,7 +22,7 @@ class NotConfiguredException(Exception):
 class _Browser:
     BY = By
 
-    def __init__(self, kill_windows=True):
+    def __init__(self, kill_windows=True, skip_confirmation=False):
         LOCAL_USER = os.getenv("LOCAL_USER")
         if not LOCAL_USER:
             raise NotConfiguredException("LOCAL_USER needs to defined in .env")
@@ -33,7 +33,8 @@ class _Browser:
         )
 
         if kill_windows:
-            input("Press any key to close Chrome and continue...")
+            if not skip_confirmation:
+                input("Press any key to close Chrome and continue...")
             os.system("taskkill /f /im chrome.exe")
         options = webdriver.ChromeOptions()
         if CHROME_PROFILE is None:
@@ -43,6 +44,8 @@ class _Browser:
                 print(
                     f'Warning: multiple Chrome profiles found. Using {CHROME_PROFILE}, if this is incorrect, add e.g. "CHROME_PROFILE = Profile 1" to .env'
                 )
+            else:
+                CHROME_PROFILE = "Profile 1"
 
         options.add_argument(f"--user-data-dir={PROFILE_PATH}")
         options.add_argument(f"--profile-directory={CHROME_PROFILE}")
