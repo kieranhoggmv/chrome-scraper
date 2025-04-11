@@ -1,19 +1,18 @@
-from contextlib import contextmanager
-import glob
-from typing import Generator
-from bs4 import BeautifulSoup
 import csv
-from dotenv import load_dotenv
-import psutil
+import glob
 import os
 import sys
+from contextlib import contextmanager
 
+import psutil
 import requests
+from bs4 import BeautifulSoup
+from chromedriver_py import binary_path
+from dotenv import load_dotenv
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from chromedriver_py import binary_path
+from selenium.webdriver.support.ui import WebDriverWait
 
 load_dotenv()
 
@@ -23,10 +22,13 @@ class NotConfiguredException(Exception):
 
 
 class SimpleBrowser:
+    """A browser to get the source of simple webpages"""
+
     def __init__(self):
         self.page = None
 
-    def get_page_source(self, url):
+    def get_page_source(self, url) -> BeautifulSoup:
+        """Loads a URL and returns its source code as a BeautifulSoup object"""
         r = requests.get(url)
         if r.ok:
             self.page = r.text
@@ -35,6 +37,7 @@ class SimpleBrowser:
         return BeautifulSoup(str(self.page), features="html.parser")
 
     def get_tables(self, source: BeautifulSoup = None) -> list:
+        """Returns a list of the tables found on the page"""
         if not source:
             source = BeautifulSoup(str(self.page), features="html.parser")
 
@@ -64,11 +67,18 @@ class SimpleBrowser:
 
 
 class Browser(SimpleBrowser):
+    """A browser that uses the Selenium Chrome driver to load interactive webpages"""
+
     _instance = None
     BY = By
 
     @contextmanager
-    def __new__(cls, kill_windows=True, skip_confirmation=False, minimise=True):
+    def __new__(
+        cls,
+        kill_windows: bool = True,
+        skip_confirmation: bool = False,
+        minimise: bool = True,
+    ):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls.setup(cls, kill_windows, skip_confirmation, minimise)
@@ -129,7 +139,7 @@ class Browser(SimpleBrowser):
 
         self.driver = webdriver.Chrome(service=svc, options=options)
 
-    def get_page_source(self, url=None):
+    def get_page_source(self, url: str = None):
         if url:
             self.driver.get(url)
             if self.minimise:
@@ -157,7 +167,7 @@ def list_dimensions(a):
     )
 
 
-def to_csv(source_list, number=1):
+def to_csv(source_list: list, number: int = 1) -> None:
     """
     Saves a list containing one or more comma-separated values to a csv file
     """

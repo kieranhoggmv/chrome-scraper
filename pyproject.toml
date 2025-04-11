@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/chrome_scraper"]
+packages = ["src/chromescraper"]
 
 [project]
 name = "chrome-scraper"
