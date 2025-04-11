@@ -12,7 +12,7 @@ with Browser(skip_confirmation=True, minimise=False) as browser:
     tables = browser.get_tables(page)
     to_csv(tables)
 
-    # Load a web page and out out the text of any <h3> elements
+    # Load a web page and output the text of any <h3> elements
     page = browser.get_page_source("https://www.bbc.co.uk/news/")
     for headline in page.find_all("h3"):
         print(headline.text)
