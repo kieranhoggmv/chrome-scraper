@@ -19,6 +19,42 @@ class NotConfiguredException(Exception):
     pass
 
 
+class EdgeBrowser:
+    def __init__(self, kill_windows=True, skip_confirmation=False):
+        LOCAL_USER = os.getenv("LOCAL_USER")
+        if not LOCAL_USER:
+            raise NotConfiguredException("LOCAL_USER needs to defined in .env")
+        PROFILE_PATH = os.getenv(
+            "PROFILE_PATH",
+            default=rf"C:\Users\{LOCAL_USER}\AppData\Local\Microsoft\Edge\User Data\Default",
+        )
+        bin_path = r"msedgedriver.exe"
+        opts = webdriver.EdgeOptions()
+        opts.add_argument("--no-sandbox")
+        opts.use_chromium = True
+        # opts.binary_location = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+        opts.add_argument(f"--user-data-dir={PROFILE_PATH}")
+        opts.add_argument("--profile-directory=Default")
+        self.driver = webdriver.Edge(
+            options=opts, service=Service(executable_path=bin_path)
+        )
+
+    def wait_for_page_item(self, by, item, seconds):
+        WebDriverWait(self.driver, timeout=seconds).until(
+            EC.presence_of_element_located((by, item))
+        )
+        return BeautifulSoup(
+            self.driver.find_element(by, item).get_attribute("innerHTML"),
+            features="html.parser",
+        )
+
+    def get_url_source(self, url):
+        self.driver.get(url)
+
+    def get_browser(self):
+        return self
+
+
 class _Browser:
     BY = By
 
