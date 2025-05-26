@@ -73,7 +73,7 @@ class EdgeBrowser:
         opts.add_argument(f"--user-data-dir={PROFILE_PATH}")
         opts.add_argument("--profile-directory=Default")
         self.driver = webdriver.Edge(
-            options=opts, service=webdriver.Service(executable_path=bin_path)
+            options=opts, service=webdriver.EdgeService(executable_path=bin_path)
         )
 
     def wait_for_page_item(self, by, item, seconds):
