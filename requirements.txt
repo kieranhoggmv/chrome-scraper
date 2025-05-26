@@ -4,3 +4,4 @@ chromedriver_py
 python-dotenv
 psutil
 requests
+loguru

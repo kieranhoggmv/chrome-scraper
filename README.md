@@ -1,4 +1,4 @@
-# chrome-scraper
-A (very) thin wrapper around selenium and beautifulsoup to make it easier to scrape web pages with Chrome
+# Lazy Scraper
+A (very) thin wrapper around Selenium and BeautifulSoup to make it easier to scrape web pages with Chrome and Edge
 ## Examples
-See [examples](src/chromescraper/examples.py)
+See [examples](src/lazyscraper/examples.py)
