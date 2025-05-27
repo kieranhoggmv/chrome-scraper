@@ -77,11 +77,11 @@ class Browser(SimpleBrowser):
 
     def __init__(
         self,
-        kill_windows=True,
+        kill_windows=False,
         skip_confirmation=False,
-        minimise=True,
-        use_profile=True,
-        headless=False,
+        minimise=False,
+        use_profile=False,
+        headless=True,
         debug=False,
     ):
         self.page = None
@@ -110,8 +110,6 @@ class Browser(SimpleBrowser):
         self.profile_path = self.get_profile_path()
         logger.debug(self.profile_path)
         # self.local_user = self.get_profile_name(profile_path=self.profile_path)
-
-        logger.debug(self.profile_path)
 
         options = self.get_options()
 
@@ -157,10 +155,13 @@ class Browser(SimpleBrowser):
         local_user = os.getenv("LOCAL_USER", None)
 
         if self.get_platform() == "macos":
-            profile_path = os.getenv(
-                "PROFILE_PATH",
-                default=rf"/Users/{local_user}/Library/Application Support/Google/Chrome",
-            )
+            if self.use_profile:
+                profile_path = os.getenv(
+                    "PROFILE_PATH",
+                    default=rf"/Users/{local_user}/Library/Application Support/Google/Chrome",
+                )
+            else:
+                profile_path = r"/tmp"
         else:
             if self.use_profile:
                 profile_path = os.getenv(
