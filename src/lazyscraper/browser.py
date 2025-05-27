@@ -91,6 +91,9 @@ class Browser(SimpleBrowser):
         self.use_profile = use_profile
         self.headless = headless
         self.debug = debug
+        self.profile_path = None
+        self.profile_name = None
+        self.local_user = None
 
         logger.remove(0)
         if self.debug:
@@ -107,12 +110,14 @@ class Browser(SimpleBrowser):
 
         if not os.getenv("LOCAL_USER", None):
             raise NotConfiguredException("LOCAL_USER needs to defined in .env")
+        self.local_user = os.getenv("LOCAL_USER", None)
         self.profile_path = self.get_profile_path()
+        self.profile_name = self.get_profile_name()
         logger.debug(self.profile_path)
-        # self.local_user = self.get_profile_name(profile_path=self.profile_path)
+        logger.debug(self.profile_name)
 
         options = self.get_options()
-
+        logger.debug([a for a in options.arguments])
         if self.kill_windows:
             self.kill_open_windows()
 
@@ -136,8 +141,11 @@ class Browser(SimpleBrowser):
             if not self.skip_confirmation:
                 input("Press any key to close open windows and continue...")
             for proc in psutil.process_iter():
-                if proc.name() == PNAME:
-                    proc.kill()
+                try:
+                    if proc.name() == PNAME:
+                        proc.kill()
+                except psutil.NoSuchProcess:
+                    pass
 
     def get_options(self):
         options = webdriver.ChromeOptions()
@@ -146,19 +154,28 @@ class Browser(SimpleBrowser):
             options.add_argument("--headless=new")
         if self.use_profile:
             logger.debug("Using existing profile")
-        options.add_argument(f"--user-data-dir={self.profile_path}")
-
-        # options.add_argument(f"--profile-directory={PROFILE_PATH}/{CHROME_PROFILE}")
+            options.add_argument(f"--user-data-dir={self.profile_path}")
+            options.add_argument(f"--profile-directory={self.profile_name}")
+        else:
+            options.add_argument(
+                rf"--user-data-dir=C:\Users\{self.local_user}\AppData\Local\Temp\Default"
+            )
+            options.add_argument("--profile-directory=Default")
+            options.add_argument("--disable-notifications")
+            options.add_argument("--disable-popup-blocking")
+            options.add_argument("--no-first-run")
+            options.add_argument("--disable-fre")
+            options.add_argument("--no-default-browser-check")
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option("useAutomationExtension", False)
         return options
 
     def get_profile_path(self):
-        local_user = os.getenv("LOCAL_USER", None)
-
         if self.get_platform() == "macos":
             if self.use_profile:
                 profile_path = os.getenv(
                     "PROFILE_PATH",
-                    default=rf"/Users/{local_user}/Library/Application Support/Google/Chrome",
+                    default=rf"/Users/{self.local_user}/Library/Application Support/Google/Chrome",
                 )
             else:
                 profile_path = r"/tmp"
@@ -166,10 +183,10 @@ class Browser(SimpleBrowser):
             if self.use_profile:
                 profile_path = os.getenv(
                     "PROFILE_PATH",
-                    default=rf"C:\Users\{local_user}\AppData\Local\Google\Chrome\User Data",
+                    default=rf"C:\Users\{self.local_user}\AppData\Local\Google\Chrome\User Data",
                 )
             else:
-                profile_path = rf"C:\Users\{local_user}\AppData\Temp"
+                profile_path = rf"C:\Users\{self.local_user}\AppData\Local\Temp"
         return profile_path
 
     def get_platform(self) -> Literal["macos", "windows"]:
@@ -181,25 +198,21 @@ class Browser(SimpleBrowser):
             logger.debug("Defaulting to Windows")
         return platform
 
-    def get_profile_name(self, profile_path):
-        local_user = os.getenv("LOCAL_USER", None)
+    def get_profile_name(self):
         profile = "Profile 1"
-
         if self.use_profile:
-            if local_user is None:
-                profiles = glob.glob(os.path.join(profile_path, "Profile*"))
-                if os.path.exists(os.path.join(profile_path, "Default")):
-                    profile = "Default"
-                elif len(profiles) > 1:
-                    profile = profiles[-1].split(os.sep)[-1]
-                    logger.warning(
-                        f'Warning: multiple Chrome profiles found. Using {profile}, if this is incorrect, add e.g. "CHROME_PROFILE = Profile 1" to .env'
-                    )
-                else:
-                    profile = "Profile 1"
-                return profile
-            else:
-                profile = local_user
+            profiles = glob.glob(os.path.join(self.profile_path, "Profile*"))  # type: ignore
+            print(profiles)
+            if len(profiles) > 1:
+                profile = profiles[-1].split(os.sep)[-1]
+                logger.warning(
+                    f'Warning: multiple Chrome profiles found. Using {profile}, if this is incorrect, add e.g. "CHROME_PROFILE = Profile 1" to .env'
+                )
+            elif len(profiles) == 1:
+                profile = "Profile 1"
+            elif os.path.exists(os.path.join(self.profile_path, "Default")):  # type: ignore
+                profile = "Default"
+
         return profile
 
     def get_page_source(self, url: str):  # type: ignore
@@ -271,26 +284,22 @@ def to_csv(source_list: list, number: int = 1) -> None:
 class EdgeBrowser(Browser):
     """A browser that uses the Selenium Edge driver to load interactive webpages"""
 
-    def __init__(self, *args, **kwargs):
-        self.bin_path = r"msedgedriver.exe"
-        # service = webdriver.EdgeService(executable_path=bin_path)
-        self.driver_type = webdriver.Edge
-        self.service_type = webdriver.EdgeService
-        super().__init__(*args, **kwargs)
-
-    def get_default_profile_path(self):
-        return r"C:\Users\{}\AppData\Local\Microsoft\Edge\User Data\Default"
+    driver_type = webdriver.Edge
+    service_type = webdriver.EdgeService
 
     def get_options(self):  # type: ignore
         opts = webdriver.EdgeOptions()
         opts.add_argument("--no-sandbox")
         # opts.use_chromium = True
-        opts.binary_location = (
-            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-        )
-        if self.use_profile:
-            opts.add_argument(f"--user-data-dir={self.profile_path}")
-            opts.add_argument("--profile-directory=Default")
+        # opts.binary_location = (
+        #     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+        # )
+        opts.add_argument(f"--user-data-dir={self.profile_path}")
+
+        # if self.use_profile:
+        #     opts.add_argument(f"--profile-directory={self.profile_name}")
+        # else:
+        #     opts.add_argument("--profile-directory=Default")
         return opts
 
     def kill_open_windows(self):
@@ -306,3 +315,30 @@ class EdgeBrowser(Browser):
                         proc.kill()
                 except psutil.NoSuchProcess:
                     pass
+
+    def get_profile_path(self):
+        local_user = os.getenv("LOCAL_USER", None)
+
+        if self.use_profile:
+            profile_path = os.getenv(
+                "PROFILE_PATH",
+                default=rf"C:\Users\{local_user}\AppData\Local\Microsoft\Edge\User Data\Default",
+            )
+        else:
+            profile_path = rf"C:\Users\{local_user}\AppData\Temp\Default"
+        return profile_path
+
+    def get_profile_name(self):
+        profile = "Default"
+        if self.use_profile:
+            profiles = glob.glob(os.path.join(self.profile_path, "Profile*"))  # type: ignore
+            if len(profiles) > 1:
+                profile = profiles[-1].split(os.sep)[-1]
+                logger.warning(
+                    f'Warning: multiple Edge profiles found. Using {profile}, if this is incorrect, add e.g. "CHROME_PROFILE = Profile 1" to .env'
+                )
+            elif len(profiles) == 1:
+                profile = "Profile 1"
+            elif os.path.exists(os.path.join(self.profile_path, "Default")):  # type: ignore
+                profile = "Default"
+        return profile
