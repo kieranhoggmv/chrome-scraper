@@ -149,18 +149,14 @@ class Browser(SimpleBrowser):
 
     def get_options(self):
         options = webdriver.ChromeOptions()
+        options.add_argument(f"--user-data-dir={self.profile_path}")
+        options.add_argument(f"--profile-directory={self.profile_name}")
         if self.headless:
             logger.debug("Using headless mode")
             options.add_argument("--headless=new")
         if self.use_profile:
             logger.debug("Using existing profile")
-            options.add_argument(f"--user-data-dir={self.profile_path}")
-            options.add_argument(f"--profile-directory={self.profile_name}")
         else:
-            options.add_argument(
-                rf"--user-data-dir=C:\Users\{self.local_user}\AppData\Local\Temp\Default"
-            )
-            options.add_argument("--profile-directory=Default")
             options.add_argument("--disable-notifications")
             options.add_argument("--disable-popup-blocking")
             options.add_argument("--no-first-run")
