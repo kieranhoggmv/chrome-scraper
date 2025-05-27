@@ -38,7 +38,7 @@ class SimpleBrowser:
             self.page = None
         return BeautifulSoup(str(self.page), features="html.parser")
 
-    def get_tables(self, source: BeautifulSoup = None) -> list:
+    def get_tables(self, source: BeautifulSoup) -> list:
         """Returns a list of the tables found on the page"""
         if not source:
             source = BeautifulSoup(str(self.page), features="html.parser")
@@ -49,15 +49,15 @@ class SimpleBrowser:
         if tables:
             for i, table in enumerate(tables):
                 this_table = []
-                th = table.find_all("th")
+                th = table.find_all("th")  # type: ignore
                 if th:
                     this_table.append(
                         [",".join([heading.text.strip() for heading in th])]
                     )
 
-                rows = table.find_all("tr")
+                rows = table.find_all("tr")  # type: ignore
                 for row in rows:
-                    td = row.find_all("td")
+                    td = row.find_all("td")  # type: ignore
                     if td:
                         this_table.append(
                             [",".join([cell.text.strip() for cell in td])]
@@ -72,8 +72,8 @@ class Browser(SimpleBrowser):
     """A browser that uses the Selenium Chrome driver to load interactive webpages"""
 
     BY = By
-    driver = webdriver.Chrome
-    service = webdriver.ChromeService
+    driver_type = webdriver.Chrome
+    service_type = webdriver.ChromeService
 
     def __init__(
         self,
@@ -96,6 +96,7 @@ class Browser(SimpleBrowser):
         if self.debug:
             logger.add(sys.stderr, level="DEBUG")
             logger.debug("Debug enabled")
+            logger.debug(f"Settings: {self.driver_type}, {self.service_type}")
         else:
             logger.add(sys.stderr, level="WARNING")
 
@@ -104,27 +105,27 @@ class Browser(SimpleBrowser):
                 "Combining use_profile=True and kill_windows=False will fail to open the correct profile if it is currently in use"
             )
 
-        logger.debug("Creating Browser()")
-
-        self.profile_path = self.get_profile_path()
-        self.local_user = self.get_profile_name(profile_path=self.profile_path)
-        if not self.local_user:
+        if not os.getenv("LOCAL_USER", None):
             raise NotConfiguredException("LOCAL_USER needs to defined in .env")
+        self.profile_path = self.get_profile_path()
+        logger.debug(self.profile_path)
+        # self.local_user = self.get_profile_name(profile_path=self.profile_path)
 
-        self.profile_path = self.profile_path.format(self.local_user)
+        logger.debug(self.profile_path)
 
         options = self.get_options()
 
         if self.kill_windows:
             self.kill_open_windows()
 
-        svc = self.service(
-            executable_path=binary_path,
+        svc = self.service_type(
+            # executable_path=binary_path,
             # capabilities=options.to_capabilities(),
         )
 
-        self.driver = self.driver(service=svc, options=options)
-        logger.debug("Finished creating Browser()")
+        logger.debug(f"Creating Browser() with {self.driver_type}")
+        self.driver = self.driver_type(service=svc, options=options)  # type: ignore
+        logger.debug(f"Finished creating Browser() {self.driver}")
 
     def kill_open_windows(self):
         if self.get_platform() == "macos":
@@ -135,7 +136,7 @@ class Browser(SimpleBrowser):
         if self.kill_windows:
             logger.debug("Killing windows...")
             if not self.skip_confirmation:
-                input("Press any key to close Chrome and continue...")
+                input("Press any key to close open windows and continue...")
             for proc in psutil.process_iter():
                 if proc.name() == PNAME:
                     proc.kill()
@@ -147,21 +148,27 @@ class Browser(SimpleBrowser):
             options.add_argument("--headless=new")
         if self.use_profile:
             logger.debug("Using existing profile")
-            options.add_argument(f"--user-data-dir={self.profile_path}")
-            # options.add_argument(f"--profile-directory={PROFILE_PATH}/{CHROME_PROFILE}")
+        options.add_argument(f"--user-data-dir={self.profile_path}")
+
+        # options.add_argument(f"--profile-directory={PROFILE_PATH}/{CHROME_PROFILE}")
         return options
 
     def get_profile_path(self):
+        local_user = os.getenv("LOCAL_USER", None)
+
         if self.get_platform() == "macos":
             profile_path = os.getenv(
                 "PROFILE_PATH",
-                default=r"/Users/{}/Library/Application Support/Google/Chrome",
+                default=rf"/Users/{local_user}/Library/Application Support/Google/Chrome",
             )
         else:
-            profile_path = os.getenv(
-                "PROFILE_PATH",
-                default=r"C:\Users\{}}\AppData\Local\Google\Chrome\User Data",
-            )
+            if self.use_profile:
+                profile_path = os.getenv(
+                    "PROFILE_PATH",
+                    default=rf"C:\Users\{local_user}\AppData\Local\Google\Chrome\User Data",
+                )
+            else:
+                profile_path = rf"C:\Users\{local_user}\AppData\Temp"
         return profile_path
 
     def get_platform(self) -> Literal["macos", "windows"]:
@@ -173,27 +180,34 @@ class Browser(SimpleBrowser):
             logger.debug("Defaulting to Windows")
         return platform
 
-    def get_profile_name(self, profile_path, local_user=None):
-        if local_user is None:
-            profiles = glob.glob(os.path.join(self.profile_path, "Profile*"))
-            if os.path.exists(os.path.join(self.profile_path, "Default")):
-                profile = "Default"
-            elif len(profiles) > 1:
-                profile = profiles[-1].split(os.sep)[-1]
-                logger.warning(
-                    f'Warning: multiple Chrome profiles found. Using {profile}, if this is incorrect, add e.g. "CHROME_PROFILE = Profile 1" to .env'
-                )
+    def get_profile_name(self, profile_path):
+        local_user = os.getenv("LOCAL_USER", None)
+        profile = "Profile 1"
+
+        if self.use_profile:
+            if local_user is None:
+                profiles = glob.glob(os.path.join(profile_path, "Profile*"))
+                if os.path.exists(os.path.join(profile_path, "Default")):
+                    profile = "Default"
+                elif len(profiles) > 1:
+                    profile = profiles[-1].split(os.sep)[-1]
+                    logger.warning(
+                        f'Warning: multiple Chrome profiles found. Using {profile}, if this is incorrect, add e.g. "CHROME_PROFILE = Profile 1" to .env'
+                    )
+                else:
+                    profile = "Profile 1"
+                return profile
             else:
-                profile = "Profile 1"
+                profile = local_user
         return profile
 
-    def get_page_source(self, url: str = None):
+    def get_page_source(self, url: str):  # type: ignore
         logger.debug(f"Loading {url}...")
         try:
             if url:
-                self.driver.get(url)
+                self.driver.get(url)  # type: ignore
                 if self.minimise:
-                    self.driver.minimize_window()
+                    self.driver.minimize_window()  # type: ignore
             self.page = self.driver.page_source
             return BeautifulSoup(str(self.page), features="html.parser")
         except exceptions.InvalidSessionIdException as e:
@@ -204,11 +218,11 @@ class Browser(SimpleBrowser):
             return None
 
     def wait_for_page_item(self, by, item, seconds=1):
-        WebDriverWait(self.driver, seconds).until(
+        WebDriverWait(self.driver, seconds).until(  # type: ignore
             EC.presence_of_element_located((by, item))
         )
         return BeautifulSoup(
-            self.driver.find_element(by, item).get_attribute("innerHTML"),
+            self.driver.find_element(by, item).get_attribute("innerHTML"),  # type: ignore
             features="html.parser",
         )
 
@@ -224,8 +238,8 @@ class Browser(SimpleBrowser):
     def close(self):
         try:
             logger.debug("Closing Browser()")
-            self.driver.close()
-            self.driver.quit()
+            self.driver.close()  # type: ignore
+            self.driver.quit()  # type: ignore
             logger.debug("Browser() closed!")
         except exceptions.InvalidSessionIdException:
             # Session is already closed
@@ -256,21 +270,38 @@ def to_csv(source_list: list, number: int = 1) -> None:
 class EdgeBrowser(Browser):
     """A browser that uses the Selenium Edge driver to load interactive webpages"""
 
-    bin_path = r"msedgedriver.exe"
-    # service = webdriver.EdgeService(executable_path=bin_path)
-    service = webdriver.EdgeService
-
     def __init__(self, *args, **kwargs):
+        self.bin_path = r"msedgedriver.exe"
+        # service = webdriver.EdgeService(executable_path=bin_path)
+        self.driver_type = webdriver.Edge
+        self.service_type = webdriver.EdgeService
         super().__init__(*args, **kwargs)
 
     def get_default_profile_path(self):
         return r"C:\Users\{}\AppData\Local\Microsoft\Edge\User Data\Default"
 
-    def get_default_options(self):
+    def get_options(self):  # type: ignore
         opts = webdriver.EdgeOptions()
         opts.add_argument("--no-sandbox")
-        opts.use_chromium = True
-        # opts.binary_location = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-        opts.add_argument(f"--user-data-dir={self.profile_path}")
-        opts.add_argument("--profile-directory=Default")
+        # opts.use_chromium = True
+        opts.binary_location = (
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+        )
+        if self.use_profile:
+            opts.add_argument(f"--user-data-dir={self.profile_path}")
+            opts.add_argument("--profile-directory=Default")
         return opts
+
+    def kill_open_windows(self):
+        process_name = "edge.exe"
+
+        if self.kill_windows:
+            logger.debug("Killing windows...")
+            if not self.skip_confirmation:
+                input("Press any key to close open windows and continue...")
+            for proc in psutil.process_iter():
+                try:
+                    if proc.name() == process_name:
+                        proc.kill()
+                except psutil.NoSuchProcess:
+                    pass
