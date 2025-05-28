@@ -68,7 +68,7 @@ class SimpleBrowser:
         return table_list
 
 
-class Browser(SimpleBrowser):
+class Browser:
     """A browser that uses the Selenium Chrome driver to load interactive webpages"""
 
     BY = By
