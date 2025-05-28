@@ -12,9 +12,11 @@ from dotenv import load_dotenv
 from loguru import logger
 from selenium import webdriver
 from selenium.common import exceptions
+from selenium.webdriver.common import service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common import service
 
 load_dotenv()
 
@@ -91,6 +93,7 @@ class Browser(SimpleBrowser):
         self.use_profile = use_profile
         self.headless = headless
         self.debug = debug
+        # self.driver = None
         self.profile_path = None
         self.profile_name = None
         self.local_user = None
@@ -127,7 +130,7 @@ class Browser(SimpleBrowser):
         )
 
         logger.debug(f"Creating Browser() with {self.driver_type}")
-        self.driver = self.driver_type(service=svc, options=options)  # type: ignore
+        self.driver = self.driver_type(service=svc, options=options)
         logger.debug(f"Finished creating Browser() {self.driver}")
 
     def kill_open_windows(self):
@@ -221,8 +224,8 @@ class Browser(SimpleBrowser):
             if url:
                 self.driver.get(url)  # type: ignore
                 if self.minimise:
-                    self.driver.minimize_window()  # type: ignore
-            self.page = self.driver.page_source
+                    self.driver.minimize_window()
+            self.page = self.driver.page_source if self.driver else ""
             return BeautifulSoup(str(self.page), features="html.parser")
         except exceptions.InvalidSessionIdException as e:
             logger.critical(
@@ -232,13 +235,17 @@ class Browser(SimpleBrowser):
             return None
 
     def wait_for_page_item(self, by, item, seconds=1):
-        WebDriverWait(self.driver, seconds).until(  # type: ignore
+        WebDriverWait(self.driver, seconds).until(
             EC.presence_of_element_located((by, item))
         )
-        return BeautifulSoup(
-            self.driver.find_element(by, item).get_attribute("innerHTML"),  # type: ignore
-            features="html.parser",
-        )
+        elem = self.driver.find_element(by, item).get_attribute("innerHTML")
+        if elem:
+            return BeautifulSoup(
+                elem,
+                features="html.parser",
+            )
+        else:
+            return None
 
     def wait_for_element_by_id(self, elem_id, seconds=1):
         return self.wait_for_page_item(By.ID, id, seconds)
@@ -252,8 +259,8 @@ class Browser(SimpleBrowser):
     def close(self):
         try:
             logger.debug("Closing Browser()")
-            self.driver.close()  # type: ignore
-            self.driver.quit()  # type: ignore
+            self.driver.close()
+            self.driver.quit()
             logger.debug("Browser() closed!")
         except exceptions.InvalidSessionIdException:
             # Session is already closed
