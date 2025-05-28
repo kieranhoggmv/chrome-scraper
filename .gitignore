@@ -3,3 +3,4 @@
 selenium_session
 *.pyc
 *.csv
+.idea
